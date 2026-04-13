@@ -1,0 +1,69 @@
+spring:
+  application:
+    name: AiTakeaway
+
+  # ========================
+  # 数据库配置
+  # ========================
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/ai_takeaway?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: yhc2023114%
+
+  # ========================
+  # Redis 配置
+  # ========================
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:                     # 本地 Redis 一般没有密码，留空即可
+      database: 0
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+
+# ========================
+# MyBatis-Plus 配置
+# ========================
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  type-aliases-package: com.aitakeaway.server.entity
+  configuration:
+    map-underscore-to-camel-case: true   # 数据库下划线字段自动映射为驼峰
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # 开发阶段打印 SQL，上线前可关掉
+  global-config:
+    db-config:
+      logic-delete-field: deleted        # 逻辑删除字段名
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# ========================
+# JWT 配置
+# ========================
+jwt:
+  secret: ai-takeaway-secret-key-please-replace-with-a-long-random-string-in-production
+  expiration: 86400000     # token 有效期，单位毫秒，86400000 = 24小时
+
+# ========================
+# LangChain4j + DeepSeek 配置
+# ========================
+langchain4j:
+  open-ai:
+    chat-model:
+      base-url: https://api.deepseek.com/v1   # DeepSeek 的 OpenAI 兼容接口
+      api-key: sk-ai-v1-329b92ffb4f03798321df76f6d288d5c70243ed9246701557fef8ae9ae3caac2           # 改成你的 DeepSeek API Key
+      model-name: deepseek-chat
+      temperature: 0.7
+      max-tokens: 1024
+      timeout: 60s                             # LLM 推理较慢，超时设长一点
+
+# ========================
+# 服务端口
+# ========================
+server:
+  port: 8080
