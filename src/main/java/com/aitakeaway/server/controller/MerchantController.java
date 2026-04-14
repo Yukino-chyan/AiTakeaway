@@ -6,6 +6,7 @@ import com.aitakeaway.server.service.MerchantService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -17,13 +18,20 @@ public class MerchantController {
 
     private final MerchantService merchantService;
 
+    private Long getCurrentUserId() {
+        Object principal = SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal();
+        if (principal instanceof Long) {
+            return (Long) principal;
+        }
+        throw new RuntimeException("请先登录");
+    }
+
     // ==================== 商家端接口 ====================
 
     @GetMapping("/my-shop")
-    public Result<Merchant> getMyShop(@RequestHeader(value = "X-User-Id", required = false) Long userId) {
-        if (userId == null) {
-            return Result.error("请先登录");
-        }
+    public Result<Merchant> getMyShop() {
+        Long userId = getCurrentUserId();
         Merchant shop = merchantService.getMyShop(userId);
         if (shop == null) {
             return Result.error("您还没有创建店铺");
@@ -32,9 +40,8 @@ public class MerchantController {
     }
 
     @PostMapping("/create")
-    public Result<Void> createShop(
-            @RequestHeader("X-User-Id") Long userId,
-            @RequestBody CreateShopRequest request) {
+    public Result<Void> createShop(@RequestBody CreateShopRequest request) {
+        Long userId = getCurrentUserId();
         Merchant merchant = new Merchant();
         merchant.setName(request.getName());
         merchant.setPhone(request.getPhone());
@@ -50,9 +57,8 @@ public class MerchantController {
     }
 
     @PutMapping("/update")
-    public Result<Void> updateShop(
-            @RequestHeader("X-User-Id") Long userId,
-            @RequestBody UpdateShopRequest request) {
+    public Result<Void> updateShop(@RequestBody UpdateShopRequest request) {
+        Long userId = getCurrentUserId();
         Merchant merchant = new Merchant();
         merchant.setId(request.getId());
         merchant.setName(request.getName());
@@ -70,9 +76,9 @@ public class MerchantController {
 
     @PutMapping("/status")
     public Result<Void> updateStatus(
-            @RequestHeader("X-User-Id") Long userId,
             @RequestParam Long id,
             @RequestParam Integer status) {
+        Long userId = getCurrentUserId();
         merchantService.updateStatus(id, status, userId);
         return Result.success();
     }

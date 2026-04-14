@@ -24,7 +24,8 @@ public class MerchantServiceImpl extends ServiceImpl<MerchantMapper, Merchant>
     public void createShop(Merchant merchant, Long userId) {
         // 1. 检查是否已有店铺
         long count = count(new LambdaQueryWrapper<Merchant>()
-                .eq(Merchant::getUserId, userId));
+                .eq(Merchant::getUserId, userId)
+                .eq(Merchant::getDeleted, 0));
         if (count > 0) {
             throw new RuntimeException("您已经创建过店铺了，每个商家只能创建一个店铺");
         }
