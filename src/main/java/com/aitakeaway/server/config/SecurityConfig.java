@@ -3,6 +3,7 @@ package com.aitakeaway.server.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -15,7 +16,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
-public class SecurityConfig {
+public class SecurityConfig{
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
@@ -28,9 +29,31 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/doc.html", "/webjars/**", "/v3/api-docs/**", "/swagger-resources/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/merchant/create").hasRole("MERCHANT")
+                .requestMatchers(HttpMethod.PUT, "/api/merchant/update").hasRole("MERCHANT")
+                .requestMatchers(HttpMethod.PUT, "/api/merchant/status").hasRole("MERCHANT")
+                .requestMatchers(HttpMethod.GET, "/api/merchant/my-shop").hasRole("MERCHANT")
+                .requestMatchers(HttpMethod.POST, "/api/dish/create").hasRole("MERCHANT")
+                .requestMatchers(HttpMethod.PUT, "/api/dish/update").hasRole("MERCHANT")
+                .requestMatchers(HttpMethod.PUT, "/api/dish/status").hasRole("MERCHANT")
+                .requestMatchers(HttpMethod.DELETE, "/api/dish/**").hasRole("MERCHANT")
+                .requestMatchers(HttpMethod.GET, "/api/dish/my-list").hasRole("MERCHANT")
                 .anyRequest().authenticated()
             )
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, e) -> {
+                    response.setStatus(401);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"code\":401,\"message\":\"未登录或Token无效\"}");
+                })
+                .accessDeniedHandler((request, response, e) -> {
+                    response.setStatus(403);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"code\":403,\"message\":\"权限不足\"}");
+                })
+            )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 
