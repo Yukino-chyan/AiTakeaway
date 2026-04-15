@@ -38,6 +38,17 @@ public class SecurityConfig{
                 .requestMatchers(HttpMethod.PUT, "/api/dish/status").hasRole("MERCHANT")
                 .requestMatchers(HttpMethod.DELETE, "/api/dish/**").hasRole("MERCHANT")
                 .requestMatchers(HttpMethod.GET, "/api/dish/my-list").hasRole("MERCHANT")
+                // 订单 - 用户端
+                .requestMatchers(HttpMethod.POST,   "/api/order/place").hasRole("CUSTOMER")
+                .requestMatchers(HttpMethod.PUT,     "/api/order/*/cancel").hasRole("CUSTOMER")
+                .requestMatchers(HttpMethod.GET,     "/api/order/my-list").hasRole("CUSTOMER")
+                // 订单 - 商家端
+                .requestMatchers(HttpMethod.GET,     "/api/order/merchant-list").hasRole("MERCHANT")
+                .requestMatchers(HttpMethod.PUT,     "/api/order/*/confirm").hasRole("MERCHANT")
+                .requestMatchers(HttpMethod.PUT,     "/api/order/*/deliver").hasRole("MERCHANT")
+                .requestMatchers(HttpMethod.PUT,     "/api/order/*/complete").hasRole("MERCHANT")
+                // 订单详情两端都能看（在 service 层做权限细分）
+                .requestMatchers(HttpMethod.GET,     "/api/order/*").authenticated()
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex
