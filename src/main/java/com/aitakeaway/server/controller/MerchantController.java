@@ -19,12 +19,23 @@ public class MerchantController {
     private final MerchantService merchantService;
 
     private Long getCurrentUserId() {
-        Object principal = SecurityContextHolder.getContext()
-                .getAuthentication().getPrincipal();
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getPrincipal() == null) {
+            throw new RuntimeException("请先登录");
+        }
+
+        // 校验是否是商家角色
+        boolean isMerchant = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_MERCHANT"));
+        if (!isMerchant) {
+            throw new RuntimeException("只有商家才能创建店铺");
+        }
+
+        Object principal = auth.getPrincipal();
         if (principal instanceof Long) {
             return (Long) principal;
         }
-        throw new RuntimeException("请先登录");
+        throw new RuntimeException("用户信息无效");
     }
 
     // ==================== 商家端接口 ====================

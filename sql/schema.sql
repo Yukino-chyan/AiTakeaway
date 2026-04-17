@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS `merchant` (
     `name`            VARCHAR(64)   NOT NULL COMMENT '店铺名称',
     `avatar`          VARCHAR(255)            COMMENT '店铺头像URL',
     `phone`           VARCHAR(20)             COMMENT '联系电话',
-    `address`         VARCHAR(255)            COMMENT '店铺地址',。
+    `address`         VARCHAR(255)            COMMENT '店铺地址',
     `business_hours`  VARCHAR(64)  DEFAULT '09:00-21:00' COMMENT '营业时间',
     `delivery_range`  INT          DEFAULT 3   COMMENT '配送范围（km）',
     `delivery_fee`    DECIMAL(10,2) DEFAULT 3.00 COMMENT '配送费（元）',
@@ -107,3 +107,24 @@ CREATE TABLE IF NOT EXISTS `order_item` (
     PRIMARY KEY (`id`),
     KEY `idx_order_id` (`order_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单明细表';
+
+
+-- ========================
+-- 购物车表（Cart 模块）
+-- ========================
+CREATE TABLE IF NOT EXISTS `cart` (
+    `id`          BIGINT        NOT NULL AUTO_INCREMENT COMMENT '购物车ID',
+    `user_id`     BIGINT        NOT NULL COMMENT '用户ID',
+    `dish_id`     BIGINT        NOT NULL COMMENT '菜品ID',
+    `dish_name`   VARCHAR(64)   NOT NULL COMMENT '菜品名称（冗余）',
+    `dish_image`   VARCHAR(255)           COMMENT '菜品图片（冗余）',
+    `dish_price`  DECIMAL(10,2) NOT NULL COMMENT '菜品单价（冗余）',
+    `merchant_id` BIGINT        NOT NULL COMMENT '商家ID',
+    `quantity`    INT           NOT NULL DEFAULT 1 COMMENT '数量',
+    `deleted`     TINYINT       DEFAULT 0 COMMENT '逻辑删除：0正常 1已删除',
+    `create_time` DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_user_id` (`user_id`),
+    KEY `idx_dish_id` (`dish_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='购物车表';

@@ -26,6 +26,7 @@ public class SecurityConfig{
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/doc.html", "/webjars/**", "/v3/api-docs/**", "/swagger-resources/**").permitAll()
@@ -49,20 +50,26 @@ public class SecurityConfig{
                 .requestMatchers(HttpMethod.PUT,     "/api/order/*/complete").hasRole("MERCHANT")
                 // 订单详情两端都能看（在 service 层做权限细分）
                 .requestMatchers(HttpMethod.GET,     "/api/order/*").authenticated()
+                // 购物车接口（需登录认证）
+                .requestMatchers("/api/cart/**").authenticated()
                 .anyRequest().authenticated()
             )
+
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, e) -> {
                     response.setStatus(401);
                     response.setContentType("application/json;charset=UTF-8");
                     response.getWriter().write("{\"code\":401,\"message\":\"未登录或Token无效\"}");
                 })
+
                 .accessDeniedHandler((request, response, e) -> {
                     response.setStatus(403);
                     response.setContentType("application/json;charset=UTF-8");
                     response.getWriter().write("{\"code\":403,\"message\":\"权限不足\"}");
                 })
+
             )
+
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
