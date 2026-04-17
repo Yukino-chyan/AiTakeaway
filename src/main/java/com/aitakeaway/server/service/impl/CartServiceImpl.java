@@ -36,6 +36,10 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
     @Override
     @Transactional
     public void addToCart(Long dishId, Integer quantity, Long userId) {
+        if (quantity == null || quantity <= 0) {
+            throw new RuntimeException("数量必须大于0");
+        }
+
         // 校验菜品是否存在且已上架
         Dish dish = dishService.getById(dishId);
         if (dish == null) {
@@ -139,26 +143,31 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
     @Override
     @Transactional
     public Long createOrderFromCart(Long userId, String deliveryAddress, String remark) {
-        // 1. 获取用户的购物车列表
+        // 1. 基本参数校验
+        if (deliveryAddress == null || deliveryAddress.isBlank()) {
+            throw new RuntimeException("收货地址不能为空");
+        }
+
+        // 2. 获取用户的购物车列表
         List<Cart> cartList = list(new LambdaQueryWrapper<Cart>()
                 .eq(Cart::getUserId, userId));
         if (cartList == null || cartList.isEmpty()) {
             throw new RuntimeException("购物车为空");
         }
 
-        // 2. 获取商家信息（同一订单只能来自同一商家）
+        // 3. 获取商家信息（同一订单只能来自同一商家）
         Long merchantId = cartList.get(0).getMerchantId();
-        
+
         // 校验商家是否存在且营业
         Merchant merchant = merchantService.getById(merchantId);
-        if (merchant == null || merchant.getDeleted() == 1) {
+        if (merchant == null) {
             throw new RuntimeException("商家不存在");
         }
         if (merchant.getStatus() != Merchant.STATUS_OPEN) {
             throw new RuntimeException("该商家暂未营业");
         }
 
-        // 3. 构建订单项Map并校验菜品
+        // 4. 构建订单项Map并校验菜品
         Map<Long, Integer> items = new HashMap<>();
         for (Cart cart : cartList) {
             Dish dish = dishService.getById(cart.getDishId());
@@ -174,10 +183,10 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
             items.put(cart.getDishId(), cart.getQuantity());
         }
 
-        // 4. 调用订单服务创建订单
+        // 5. 调用订单服务创建订单
         Long orderId = orderService.placeOrder(userId, merchantId, deliveryAddress, remark, items);
 
-        // 5. 清空购物车
+        // 6. 清空购物车
         clearCart(userId);
 
         return orderId;
