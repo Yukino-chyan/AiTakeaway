@@ -1,9 +1,8 @@
 package com.aitakeaway.server.service;
 
+import com.aitakeaway.server.dto.CartVO;
 import com.aitakeaway.server.entity.Cart;
 import com.baomidou.mybatisplus.extension.service.IService;
-
-import java.util.List;
 
 public interface CartService extends IService<Cart> {
 
@@ -37,11 +36,11 @@ public interface CartService extends IService<Cart> {
     void clearCart(Long userId);
 
     /**
-     * 获取当前用户的购物车列表
+     * 获取当前用户的购物车
      * @param userId 用户ID
-     * @return 购物车列表
+     * @return 购物车VO
      */
-    List<Cart> getCartList(Long userId);
+    CartVO getCartList(Long userId);
 
     /**
      * 从购物车创建订单
