@@ -1,14 +1,12 @@
 package com.aitakeaway.server.controller;
 
 import com.aitakeaway.server.common.Result;
-import com.aitakeaway.server.entity.Cart;
+import com.aitakeaway.server.dto.CartVO;
 import com.aitakeaway.server.service.CartService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * 购物车控制器
@@ -69,7 +67,7 @@ public class CartController {
      * 获取购物车列表
      */
     @GetMapping("/list")
-    public Result<List<Cart>> getCartList() {
+    public Result<CartVO> getCartList() {
         return Result.success(cartService.getCartList(getCurrentUserId()));
     }
 

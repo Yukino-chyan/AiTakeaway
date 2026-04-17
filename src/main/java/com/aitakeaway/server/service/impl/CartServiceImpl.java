@@ -1,5 +1,7 @@
 package com.aitakeaway.server.service.impl;
 
+import com.aitakeaway.server.dto.CartItemVO;
+import com.aitakeaway.server.dto.CartVO;
 import com.aitakeaway.server.entity.Cart;
 import com.aitakeaway.server.entity.Dish;
 import com.aitakeaway.server.entity.Merchant;
@@ -14,9 +16,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 购物车服务实现类
@@ -41,11 +45,17 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
             throw new RuntimeException("菜品已下架，无法加入购物车");
         }
 
+        // 跨商家检查：购物车不为空时，新菜品必须属于同一商家
+        List<Cart> existing = list(new LambdaQueryWrapper<Cart>()
+                .eq(Cart::getUserId, userId));
+        if (!existing.isEmpty() && !existing.get(0).getMerchantId().equals(dish.getMerchantId())) {
+            throw new RuntimeException("购物车中已有其他商家的菜品，请先清空购物车再下单");
+        }
+
         // 检查购物车中是否已存在该菜品
         Cart existingCart = getOne(new LambdaQueryWrapper<Cart>()
                 .eq(Cart::getUserId, userId)
-                .eq(Cart::getDishId, dishId)
-                .eq(Cart::getDeleted, 0));
+                .eq(Cart::getDishId, dishId));
 
         if (existingCart != null) {
             // 已存在则累加数量
@@ -94,18 +104,44 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
     }
 
     @Override
-    public List<Cart> getCartList(Long userId) {
-        return list(new LambdaQueryWrapper<Cart>()
+    public CartVO getCartList(Long userId) {
+        List<Cart> carts = list(new LambdaQueryWrapper<Cart>()
                 .eq(Cart::getUserId, userId)
-                .eq(Cart::getDeleted, 0)
                 .orderByDesc(Cart::getCreateTime));
+
+        CartVO vo = new CartVO();
+        if (carts.isEmpty()) {
+            vo.setItems(List.of());
+            vo.setTotalAmount(BigDecimal.ZERO);
+            return vo;
+        }
+
+        vo.setMerchantId(carts.get(0).getMerchantId());
+        List<CartItemVO> items = carts.stream().map(cart -> {
+            CartItemVO item = new CartItemVO();
+            item.setCartId(cart.getId());
+            item.setDishId(cart.getDishId());
+            item.setDishName(cart.getDishName());
+            item.setDishImage(cart.getDishImage());
+            item.setDishPrice(cart.getDishPrice());
+            item.setQuantity(cart.getQuantity());
+            item.setSubtotal(cart.getDishPrice().multiply(BigDecimal.valueOf(cart.getQuantity())));
+            return item;
+        }).collect(Collectors.toList());
+
+        vo.setItems(items);
+        vo.setTotalAmount(items.stream()
+                .map(CartItemVO::getSubtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        return vo;
     }
 
     @Override
     @Transactional
     public Long createOrderFromCart(Long userId, String deliveryAddress, String remark) {
         // 1. 获取用户的购物车列表
-        List<Cart> cartList = getCartList(userId);
+        List<Cart> cartList = list(new LambdaQueryWrapper<Cart>()
+                .eq(Cart::getUserId, userId));
         if (cartList == null || cartList.isEmpty()) {
             throw new RuntimeException("购物车为空");
         }
