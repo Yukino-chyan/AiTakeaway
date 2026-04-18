@@ -98,6 +98,7 @@ async function submit() {
   submitting.value = true
   try {
     const res = await createOrderFromCart({
+      merchantId: Number(merchantId.value),
       deliveryAddress: deliveryAddress.value.trim(),
       remark: remark.value.trim()
     })

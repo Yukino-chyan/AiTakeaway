@@ -44,11 +44,12 @@ public interface CartService extends IService<Cart> {
     List<Cart> getCartList(Long userId);
 
     /**
-     * 从购物车创建订单
+     * 从购物车创建订单（仅结算指定商家的商品）
      * @param userId 用户ID
+     * @param merchantId 商家ID
      * @param deliveryAddress 收货地址
      * @param remark 备注
      * @return 新订单ID
      */
-    Long createOrderFromCart(Long userId, String deliveryAddress, String remark);
+    Long createOrderFromCart(Long userId, Long merchantId, String deliveryAddress, String remark);
 }
