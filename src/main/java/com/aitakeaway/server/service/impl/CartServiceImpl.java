@@ -142,23 +142,23 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
 
     @Override
     @Transactional
-    public Long createOrderFromCart(Long userId, String deliveryAddress, String remark) {
+    public Long createOrderFromCart(Long userId, Long merchantId, String deliveryAddress, String remark) {
         // 1. 基本参数校验
         if (deliveryAddress == null || deliveryAddress.isBlank()) {
             throw new RuntimeException("收货地址不能为空");
         }
 
-        // 2. 获取用户的购物车列表
+        // 2. 只取该商家的购物车商品
         List<Cart> cartList = list(new LambdaQueryWrapper<Cart>()
-                .eq(Cart::getUserId, userId));
+                .eq(Cart::getUserId, userId)
+                .eq(Cart::getMerchantId, merchantId)
+                .eq(Cart::getDeleted, 0));
+
         if (cartList == null || cartList.isEmpty()) {
-            throw new RuntimeException("购物车为空");
+            throw new RuntimeException("该商家购物车为空");
         }
 
-        // 3. 获取商家信息（同一订单只能来自同一商家）
-        Long merchantId = cartList.get(0).getMerchantId();
-
-        // 校验商家是否存在且营业
+        // 3. 校验商家是否存在且营业
         Merchant merchant = merchantService.getById(merchantId);
         if (merchant == null) {
             throw new RuntimeException("商家不存在");
@@ -177,17 +177,16 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
             if (dish.getStatus() != Dish.STATUS_ON) {
                 throw new RuntimeException("菜品「" + cart.getDishName() + "」已下架");
             }
-            if (!dish.getMerchantId().equals(merchantId)) {
-                throw new RuntimeException("不支持跨商家下单，请分开结算");
-            }
             items.put(cart.getDishId(), cart.getQuantity());
         }
 
         // 5. 调用订单服务创建订单
         Long orderId = orderService.placeOrder(userId, merchantId, deliveryAddress, remark, items);
 
-        // 6. 清空购物车
-        clearCart(userId);
+        // 6. 只清除该商家的购物车条目
+        remove(new LambdaQueryWrapper<Cart>()
+                .eq(Cart::getUserId, userId)
+                .eq(Cart::getMerchantId, merchantId));
 
         return orderId;
     }

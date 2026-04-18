@@ -78,6 +78,7 @@ public class CartController {
     public Result<Long> createOrderFromCart(@RequestBody CreateOrderRequest request) {
         Long orderId = cartService.createOrderFromCart(
                 getCurrentUserId(),
+                request.getMerchantId(),
                 request.getDeliveryAddress(),
                 request.getRemark()
         );
@@ -104,6 +105,8 @@ public class CartController {
 
     @Data
     static class CreateOrderRequest {
+        /** 商家ID */
+        private Long merchantId;
         /** 收货地址 */
         private String deliveryAddress;
         /** 备注 */
