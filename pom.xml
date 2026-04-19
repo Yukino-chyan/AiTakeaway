@@ -85,6 +85,13 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- LangChain4j 核心（AiServices、MessageWindowChatMemory、@Tool 等） -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+            <version>${langchain4j.version}</version>
+        </dependency>
+
         <!-- LangChain4j（通过 OpenAI 兼容接口对接 DeepSeek） -->
         <dependency>
             <groupId>dev.langchain4j</groupId>
