@@ -31,6 +31,10 @@
     {
       "path": "pages/checkout/checkout",
       "style": { "navigationBarTitleText": "确认订单" }
+    },
+    {
+      "path": "pages/ai-chat/ai-chat",
+      "style": { "navigationBarTitleText": "AI点餐助手" }
     }
   ],
   "tabBar": {

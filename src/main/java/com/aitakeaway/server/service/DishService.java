@@ -3,6 +3,7 @@ package com.aitakeaway.server.service;
 import com.aitakeaway.server.entity.Dish;
 import com.baomidou.mybatisplus.extension.service.IService;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public interface DishService extends IService<Dish> {
@@ -24,4 +25,7 @@ public interface DishService extends IService<Dish> {
 
     /** 用户查询某商家的上架菜品 */
     List<Dish> getOnDishList(Long merchantId);
+
+    /** 跨所有商家搜索上架菜品 */
+    List<Dish> searchOnDishes(String keyword, BigDecimal maxPrice);
 }

@@ -133,6 +133,7 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
             CartItemVO item = new CartItemVO();
             item.setCartId(cart.getId());
             item.setDishId(cart.getDishId());
+            item.setMerchantId(cart.getMerchantId());
             item.setDishName(cart.getDishName());
             item.setDishImage(cart.getDishImage());
             item.setDishPrice(cart.getDishPrice());

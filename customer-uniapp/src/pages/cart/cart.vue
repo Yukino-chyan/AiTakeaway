@@ -55,7 +55,7 @@ async function load() {
   loading.value = true
   try {
     const res = await getCartList()
-    allItems.value = res.data || []
+    allItems.value = res.data?.items || []
     // 拉取所有涉及商家的名称
     const ids = [...new Set(allItems.value.map(i => i.merchantId))]
     await Promise.all(ids.map(async id => {

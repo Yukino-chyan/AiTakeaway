@@ -13,7 +13,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -105,5 +107,18 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements Di
                 .eq(Dish::getStatus, Dish.STATUS_ON)
                 .eq(Dish::getDeleted, 0)
                 .orderByDesc(Dish::getCreateTime));
+    }
+
+    @Override
+    public List<Dish> searchOnDishes(String keyword, BigDecimal maxPrice) {
+        return list(new LambdaQueryWrapper<Dish>()
+                .eq(Dish::getStatus, Dish.STATUS_ON)
+                .eq(Dish::getDeleted, 0))
+                .stream()
+                .filter(d -> keyword == null
+                        || d.getName().contains(keyword)
+                        || (d.getDescription() != null && d.getDescription().contains(keyword)))
+                .filter(d -> maxPrice == null || d.getPrice().compareTo(maxPrice) <= 0)
+                .collect(Collectors.toList());
     }
 }

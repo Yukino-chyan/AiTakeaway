@@ -74,7 +74,7 @@ async function load() {
       getCartList(),
       getMerchantDetail(merchantId.value)
     ])
-    items.value = (cartRes.data || []).filter(
+    items.value = (cartRes.data?.items || []).filter(
       i => String(i.merchantId) === String(merchantId.value)
     )
     merchantName.value = merchantRes.data?.name || ''

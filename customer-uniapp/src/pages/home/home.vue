@@ -16,6 +16,12 @@
       </view>
     </view>
 
+    <!-- AI助手浮动入口 -->
+    <view class="ai-fab" @click="openAiChat">
+      <text class="ai-fab-icon">🤖</text>
+      <text class="ai-fab-text">AI点餐</text>
+    </view>
+
     <!-- 商家列表 -->
     <scroll-view
       class="list"
@@ -116,6 +122,10 @@ async function onRefresh() {
 function goMerchant(id) {
   uni.navigateTo({ url: `/pages/merchant/merchant?merchantId=${id}` })
 }
+
+function openAiChat() {
+  uni.navigateTo({ url: '/pages/ai-chat/ai-chat' })
+}
 </script>
 
 <style scoped>
@@ -206,4 +216,21 @@ function goMerchant(id) {
   color: #ccc;
   margin-left: 16rpx;
 }
+
+.ai-fab {
+  position: fixed;
+  right: 40rpx;
+  bottom: 180rpx;
+  z-index: 999;
+  background: #1890ff;
+  border-radius: 60rpx;
+  padding: 18rpx 28rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 4rpx 16rpx rgba(24,144,255,0.4);
+}
+
+.ai-fab-icon { font-size: 44rpx; }
+.ai-fab-text { font-size: 22rpx; color: #fff; margin-top: 4rpx; }
 </style>

@@ -25,20 +25,21 @@ public class AiConfig {
 
     @Bean
     public AiOrderAssistant aiOrderAssistant() {
+        // 用局部变量而非字段，避免 Spring 代理干扰
+        Map<Long, ChatMemory> store = new ConcurrentHashMap<>();
         return AiServices.builder(AiOrderAssistant.class)
                 .chatLanguageModel(chatModel)
                 .chatMemoryProvider(userId ->
-                        memoryStore.computeIfAbsent((Long) userId,
+                        store.computeIfAbsent((Long) userId,
                                 id -> MessageWindowChatMemory.withMaxMessages(10)))
                 .tools(tools)
                 .systemMessageProvider(userId ->
-                        "你是一个外卖平台的AI点餐助手。当前用户ID是 " + userId + "。\n" +
+                        "你是一个外卖平台的AI点餐助手。\n" +
                         "你的职责：\n" +
-                        "1. 根据用户描述的口味、预算、偏好，调用工具查询菜品并推荐\n" +
-                        "2. 用户确认后，调用工具将菜品加入购物车\n" +
-                        "3. 推荐时说明菜名、价格和推荐理由，每次最多推荐3道\n" +
-                        "4. 查询菜品时必须知道商家ID，如果用户没有提供，请询问\n" +
-                        "5. 加入购物车时使用当前用户ID(" + userId + ")和菜品ID\n" +
+                        "1. 用户描述口味/偏好但未指定商家时，调用 searchDishesGlobal 跨全平台搜索菜品\n" +
+                        "2. 用户已指定商家时，调用 queryDishes 查询该商家菜品\n" +
+                        "3. 推荐时说明菜名、价格、所属商家和推荐理由，每次最多推荐3道\n" +
+                        "4. 用户确认后，调用 addToCart 将菜品加入购物车（无需传用户ID，系统自动处理）\n" +
                         "请用简洁友好的中文回复。")
                 .build();
     }

@@ -9,6 +9,7 @@ public class CartItemVO {
 
     private Long cartId;
     private Long dishId;
+    private Long merchantId;
     private String dishName;
     private String dishImage;
     private BigDecimal dishPrice;

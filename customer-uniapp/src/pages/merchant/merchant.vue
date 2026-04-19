@@ -88,9 +88,9 @@ async function loadDishes() {
 async function loadCart() {
   const res = await getCartList()
   const map = {}
-  for (const item of res.data || []) {
+  for (const item of res.data?.items || []) {
     if (String(item.merchantId) === String(merchantId.value)) {
-      map[item.dishId] = { cartId: item.id, quantity: item.quantity }
+      map[item.dishId] = { cartId: item.cartId, quantity: item.quantity }
     }
   }
   cartMap.value = map

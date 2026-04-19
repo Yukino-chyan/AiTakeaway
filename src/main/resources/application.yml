@@ -1,6 +1,8 @@
 spring:
   application:
     name: AiTakeaway
+  config:
+    import: optional:file:./secret.yml   # 本地密钥覆盖，此文件已被 .gitignore 忽略
 
   # ========================
   # 数据库配置
@@ -57,7 +59,7 @@ langchain4j:
     chat-model:
 
       base-url: https://api.deepseek.com/v1   # DeepSeek 的 OpenAI 兼容接口
-      api-key: sk-ai-v1-329b92ffb4f03798321df76f6d288d5c70243ed9246701557fef8ae9ae3caac2           # 改成你的 DeepSeek API Key
+      api-key: ${DEEPSEEK_API_KEY:placeholder}
       model-name: deepseek-chat
       temperature: 0.7
       max-tokens: 1024
