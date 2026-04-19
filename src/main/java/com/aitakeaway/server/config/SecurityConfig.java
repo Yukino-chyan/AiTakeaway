@@ -50,8 +50,8 @@ public class SecurityConfig{
                 .requestMatchers(HttpMethod.PUT,     "/api/order/*/complete").hasRole("MERCHANT")
                 // 订单详情两端都能看（在 service 层做权限细分）
                 .requestMatchers(HttpMethod.GET,     "/api/order/*").authenticated()
-                // 购物车接口（需登录认证）
-                .requestMatchers("/api/cart/**").authenticated()
+                // 购物车接口（仅顾客可用）
+                .requestMatchers("/api/cart/**").hasRole("CUSTOMER")
                 .anyRequest().authenticated()
             )
 

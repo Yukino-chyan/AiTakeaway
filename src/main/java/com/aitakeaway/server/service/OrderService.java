@@ -4,6 +4,7 @@ import com.aitakeaway.server.dto.OrderDetailVO;
 import com.aitakeaway.server.entity.Order;
 import com.baomidou.mybatisplus.extension.service.IService;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -17,10 +18,17 @@ public interface OrderService extends IService<Order> {
      * @param deliveryAddress 收货地址
      * @param remark          备注
      * @param items           {dishId -> quantity}
+     * @param snapshotPrices  购物车价格快照 {dishId -> price}，为 null 时使用菜品实时价格
      * @return 新订单ID
      */
     Long placeOrder(Long userId, Long merchantId, String deliveryAddress,
-                    String remark, Map<Long, Integer> items);
+                    String remark, Map<Long, Integer> items, Map<Long, BigDecimal> snapshotPrices);
+
+    /** 直接下单（无价格快照，使用实时菜品价格） */
+    default Long placeOrder(Long userId, Long merchantId, String deliveryAddress,
+                            String remark, Map<Long, Integer> items) {
+        return placeOrder(userId, merchantId, deliveryAddress, remark, items, null);
+    }
 
     /** 用户取消订单（仅允许 PENDING 状态） */
     void cancelOrder(Long orderId, Long userId);

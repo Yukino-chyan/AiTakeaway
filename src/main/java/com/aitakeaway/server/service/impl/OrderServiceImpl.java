@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 @RequiredArgsConstructor
@@ -34,11 +35,14 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
     // ==================== 私有工具方法 ====================
 
-    /** 生成唯一订单号：yyyyMMddHHmmss + 6位随机数 */
+    private static final AtomicLong SEQ = new AtomicLong(0);
+
+    /** 生成唯一订单号：yyyyMMddHHmmss + 自增序列(4位) + 随机数(2位)，避免同一秒并发碰撞 */
     private String generateOrderNo() {
         String ts = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-        int rand = ThreadLocalRandom.current().nextInt(100000, 999999);
-        return ts + rand;
+        long seq = SEQ.incrementAndGet() % 10000;
+        int rand = ThreadLocalRandom.current().nextInt(10, 99);
+        return ts + String.format("%04d", seq) + rand;
     }
 
     /** 根据 userId 获取其商家信息，不存在则抛异常 */
@@ -79,7 +83,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     @Override
     @Transactional
     public Long placeOrder(Long userId, Long merchantId, String deliveryAddress,
-                           String remark, Map<Long, Integer> items) {
+                           String remark, Map<Long, Integer> items, Map<Long, BigDecimal> snapshotPrices) {
         if (items == null || items.isEmpty()) {
             throw new RuntimeException("订单中至少包含一个菜品");
         }
@@ -116,13 +120,18 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                 throw new RuntimeException("菜品「" + dish.getName() + "」已下架");
             }
 
-            BigDecimal subtotal = dish.getPrice().multiply(BigDecimal.valueOf(qty));
+            // 优先使用购物车快照价格，无快照时降级为实时价格
+            BigDecimal price = (snapshotPrices != null && snapshotPrices.containsKey(dishId))
+                    ? snapshotPrices.get(dishId)
+                    : dish.getPrice();
+
+            BigDecimal subtotal = price.multiply(BigDecimal.valueOf(qty));
             totalAmount = totalAmount.add(subtotal);
 
             OrderItem item = new OrderItem();
             item.setDishId(dishId);
             item.setDishName(dish.getName());
-            item.setDishPrice(dish.getPrice());
+            item.setDishPrice(price);
             item.setQuantity(qty);
             item.setSubtotal(subtotal);
             orderItems.add(item);

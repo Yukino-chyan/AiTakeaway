@@ -1,7 +1,9 @@
 package com.aitakeaway.server.service.impl;
 
+import com.aitakeaway.server.entity.Cart;
 import com.aitakeaway.server.entity.Dish;
 import com.aitakeaway.server.entity.Merchant;
+import com.aitakeaway.server.mapper.CartMapper;
 import com.aitakeaway.server.mapper.DishMapper;
 import com.aitakeaway.server.service.DishService;
 import com.aitakeaway.server.service.MerchantService;
@@ -18,6 +20,7 @@ import java.util.List;
 public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements DishService {
 
     private final MerchantService merchantService;
+    private final CartMapper cartMapper;
 
     /** 根据 userId 获取其店铺，若不存在则抛异常 */
     private Merchant getMerchantByUserId(Long userId) {
@@ -82,6 +85,8 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements Di
         Merchant merchant = getMerchantByUserId(userId);
         getOwnedDish(dishId, merchant.getId());
         removeById(dishId);
+        // 同步清理所有用户购物车中该菜品的记录
+        cartMapper.delete(new LambdaQueryWrapper<Cart>().eq(Cart::getDishId, dishId));
     }
 
     @Override

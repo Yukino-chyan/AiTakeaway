@@ -120,8 +120,16 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
             return vo;
         }
 
+        // 过滤掉已下架或已删除的菜品
+        List<Cart> availableCarts = carts.stream()
+                .filter(cart -> {
+                    Dish dish = dishService.getById(cart.getDishId());
+                    return dish != null && dish.getDeleted() != 1 && dish.getStatus() == Dish.STATUS_ON;
+                })
+                .collect(Collectors.toList());
+
         vo.setMerchantId(carts.get(0).getMerchantId());
-        List<CartItemVO> items = carts.stream().map(cart -> {
+        List<CartItemVO> items = availableCarts.stream().map(cart -> {
             CartItemVO item = new CartItemVO();
             item.setCartId(cart.getId());
             item.setDishId(cart.getDishId());
@@ -148,11 +156,10 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
             throw new RuntimeException("收货地址不能为空");
         }
 
-        // 2. 只取该商家的购物车商品
+        // 2. 只取该商家的购物车商品（@TableLogic 自动过滤已删除记录）
         List<Cart> cartList = list(new LambdaQueryWrapper<Cart>()
                 .eq(Cart::getUserId, userId)
-                .eq(Cart::getMerchantId, merchantId)
-                .eq(Cart::getDeleted, 0));
+                .eq(Cart::getMerchantId, merchantId));
 
         if (cartList == null || cartList.isEmpty()) {
             throw new RuntimeException("该商家购物车为空");
@@ -167,8 +174,9 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
             throw new RuntimeException("该商家暂未营业");
         }
 
-        // 4. 构建订单项Map并校验菜品
+        // 4. 构建订单项Map、价格快照并校验菜品
         Map<Long, Integer> items = new HashMap<>();
+        Map<Long, BigDecimal> snapshotPrices = new HashMap<>();
         for (Cart cart : cartList) {
             Dish dish = dishService.getById(cart.getDishId());
             if (dish == null || dish.getDeleted() == 1) {
@@ -178,10 +186,11 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
                 throw new RuntimeException("菜品「" + cart.getDishName() + "」已下架");
             }
             items.put(cart.getDishId(), cart.getQuantity());
+            snapshotPrices.put(cart.getDishId(), cart.getDishPrice());
         }
 
-        // 5. 调用订单服务创建订单
-        Long orderId = orderService.placeOrder(userId, merchantId, deliveryAddress, remark, items);
+        // 5. 调用订单服务创建订单（使用购物车价格快照）
+        Long orderId = orderService.placeOrder(userId, merchantId, deliveryAddress, remark, items, snapshotPrices);
 
         // 6. 只清除该商家的购物车条目
         remove(new LambdaQueryWrapper<Cart>()
