@@ -111,14 +111,43 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements Di
 
     @Override
     public List<Dish> searchOnDishes(String keyword, BigDecimal maxPrice) {
-        return list(new LambdaQueryWrapper<Dish>()
+        List<Dish> all = list(new LambdaQueryWrapper<Dish>()
                 .eq(Dish::getStatus, Dish.STATUS_ON)
-                .eq(Dish::getDeleted, 0))
-                .stream()
-                .filter(d -> keyword == null
-                        || d.getName().contains(keyword)
-                        || (d.getDescription() != null && d.getDescription().contains(keyword)))
+                .eq(Dish::getDeleted, 0));
+
+        return all.stream()
+                .filter(d -> matchesKeyword(d, keyword))
                 .filter(d -> maxPrice == null || d.getPrice().compareTo(maxPrice) <= 0)
                 .collect(Collectors.toList());
+    }
+
+    private boolean matchesKeyword(Dish d, String raw) {
+        if (raw == null || raw.isBlank()) return true;
+        // 去掉语气词，保留核心词
+        String cleaned = raw.replaceAll("[的了吗呢啊哦嗯些点一下吧]", "").trim();
+        if (cleaned.isEmpty()) return true;
+
+        String name = d.getName() == null ? "" : d.getName();
+        String desc = d.getDescription() == null ? "" : d.getDescription();
+        String cat  = d.getCategory() == null ? "" : d.getCategory();
+        String all  = name + desc + cat;
+
+        // 第一优先级：整体关键词子串匹配（精确）
+        if (all.contains(cleaned)) return true;
+
+        // 第二优先级：逗号分割后每段子串匹配（处理"酸,辣"这类提取词）
+        for (String token : cleaned.split("[,，、\\s]+")) {
+            if (!token.isEmpty() && all.contains(token)) return true;
+        }
+
+        // 第三优先级：2字以上关键词拆成2字滑窗匹配，避免单字误匹配
+        if (cleaned.length() >= 2) {
+            for (int i = 0; i <= cleaned.length() - 2; i++) {
+                String bigram = cleaned.substring(i, i + 2);
+                if (all.contains(bigram)) return true;
+            }
+        }
+
+        return false;
     }
 }

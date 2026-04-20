@@ -48,6 +48,28 @@
         </view>
       </view>
 
+      <!-- 评价区（仅已完成订单） -->
+      <view v-if="order.status === 3" class="section-card">
+        <view class="section-title">订单评价</view>
+
+        <!-- 已评价：展示评价摘要 -->
+        <view v-if="existingReview" class="review-done">
+          <view class="rv-stars">
+            <text v-for="i in 5" :key="i" class="rv-star" :class="i <= existingReview.rating ? 'filled' : ''">★</text>
+            <text class="rv-score-text">{{ LABELS[existingReview.rating] }}</text>
+          </view>
+          <text v-if="existingReview.content" class="rv-content">{{ existingReview.content }}</text>
+          <text class="rv-time">{{ formatTime(existingReview.createTime) }}</text>
+        </view>
+
+        <!-- 未评价：跳转写评价页 -->
+        <view v-else class="go-review-btn" @click="goWriteReview">
+          <text class="go-review-text">✏️ 去写评价</text>
+          <text class="go-review-tip">分享您的用餐体验</text>
+          <text class="go-review-arrow">›</text>
+        </view>
+      </view>
+
       <!-- 订单信息 -->
       <view class="section-card">
         <view class="section-title">订单信息</view>
@@ -71,18 +93,29 @@
 
 <script setup>
 import { ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { getOrderDetail, cancelOrder } from '@/api/order'
+import { getOrderReview } from '@/api/review'
 
 const order = ref(null)
 const items = ref([])
 const loading = ref(false)
 const cancelling = ref(false)
 const orderId = ref(null)
+const existingReview = ref(null)
+
+const LABELS = ['', '非常不满意', '不满意', '一般', '满意', '非常满意']
 
 onLoad((options) => {
   orderId.value = options?.orderId
   load()
+})
+
+// 从写评价页返回时刷新评价状态
+onShow(() => {
+  if (order.value?.status === 3) {
+    loadReview()
+  }
 })
 
 async function load() {
@@ -92,11 +125,31 @@ async function load() {
     const res = await getOrderDetail(orderId.value)
     order.value = res.data?.order
     items.value = res.data?.items || []
+    if (order.value?.status === 3) {
+      await loadReview()
+    }
   } catch {
     uni.showToast({ title: '加载失败', icon: 'none' })
   } finally {
     loading.value = false
   }
+}
+
+async function loadReview() {
+  try {
+    const rv = await getOrderReview(orderId.value)
+    existingReview.value = rv.data || null
+  } catch {
+    existingReview.value = null
+  }
+}
+
+function goWriteReview() {
+  const name = encodeURIComponent(order.value?.merchantName || '该商家')
+  const no = encodeURIComponent(order.value?.orderNo || '')
+  uni.navigateTo({
+    url: `/pages/write-review/write-review?orderId=${orderId.value}&merchantName=${name}&orderNo=${no}`
+  })
 }
 
 async function cancel() {
@@ -138,7 +191,6 @@ function formatTime(t) {
   min-height: 100vh;
   padding-bottom: 60rpx;
 }
-
 .center-tip {
   text-align: center;
   color: #999;
@@ -157,23 +209,14 @@ function formatTime(t) {
 .delivering { background: #388e3c; }
 .completed  { background: #9e9e9e; }
 .cancelled  { background: #bdbdbd; }
-
-.status-text {
-  font-size: 40rpx;
-  font-weight: bold;
-  color: #fff;
-}
-.status-sub {
-  font-size: 26rpx;
-  color: rgba(255,255,255,0.85);
-}
+.status-text { font-size: 40rpx; font-weight: bold; color: #fff; }
+.status-sub  { font-size: 26rpx; color: rgba(255,255,255,0.85); }
 
 .section-card {
   background: #fff;
   margin: 16rpx 0;
   padding: 24rpx 32rpx;
 }
-
 .section-title {
   font-size: 26rpx;
   font-weight: bold;
@@ -187,18 +230,8 @@ function formatTime(t) {
   border-bottom: 1rpx solid #f8f8f8;
 }
 .info-row:last-child { border-bottom: none; }
-
-.info-label {
-  font-size: 26rpx;
-  color: #999;
-  width: 140rpx;
-  flex-shrink: 0;
-}
-.info-value {
-  flex: 1;
-  font-size: 26rpx;
-  color: #333;
-}
+.info-label { font-size: 26rpx; color: #999; width: 140rpx; flex-shrink: 0; }
+.info-value { flex: 1; font-size: 26rpx; color: #333; }
 .info-value.small { font-size: 22rpx; color: #666; }
 
 .order-item {
@@ -208,9 +241,8 @@ function formatTime(t) {
   border-bottom: 1rpx solid #f8f8f8;
 }
 .order-item:last-child { border-bottom: none; }
-
-.oi-name { flex: 1; font-size: 28rpx; color: #333; }
-.oi-qty  { font-size: 26rpx; color: #999; margin-right: 20rpx; }
+.oi-name  { flex: 1; font-size: 28rpx; color: #333; }
+.oi-qty   { font-size: 26rpx; color: #999; margin-right: 20rpx; }
 .oi-price { font-size: 28rpx; color: #333; font-weight: bold; }
 
 .fee-row {
@@ -221,14 +253,29 @@ function formatTime(t) {
 }
 .fee-row:last-child { border-bottom: none; }
 .fee-row.total { padding-top: 20rpx; }
-
 .fee-label { font-size: 26rpx; color: #666; }
 .fee-value { font-size: 26rpx; color: #333; }
-.fee-value.pay {
-  font-size: 34rpx;
-  font-weight: bold;
-  color: #FF6B35;
+.fee-value.pay { font-size: 34rpx; font-weight: bold; color: #FF6B35; }
+
+/* 已评价展示 */
+.review-done { display: flex; flex-direction: column; gap: 10rpx; }
+.rv-stars { display: flex; align-items: center; gap: 6rpx; }
+.rv-star { font-size: 34rpx; color: #e0e0e0; }
+.rv-star.filled { color: #FFB300; }
+.rv-score-text { font-size: 26rpx; color: #FF6B35; margin-left: 8rpx; }
+.rv-content { font-size: 28rpx; color: #333; line-height: 1.6; }
+.rv-time { font-size: 22rpx; color: #bbb; }
+
+/* 去写评价按钮 */
+.go-review-btn {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 0;
+  gap: 12rpx;
 }
+.go-review-text { font-size: 30rpx; font-weight: bold; color: #FF6B35; flex: 1; }
+.go-review-tip  { font-size: 24rpx; color: #bbb; }
+.go-review-arrow { font-size: 36rpx; color: #ccc; }
 
 .cancel-btn {
   margin: 32rpx;

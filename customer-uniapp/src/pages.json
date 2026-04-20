@@ -35,6 +35,14 @@
     {
       "path": "pages/ai-chat/ai-chat",
       "style": { "navigationBarTitleText": "AI点餐助手" }
+    },
+    {
+      "path": "pages/write-review/write-review",
+      "style": { "navigationBarTitleText": "写评价" }
+    },
+    {
+      "path": "pages/merchant-reviews/merchant-reviews",
+      "style": { "navigationBarTitleText": "用户评价" }
     }
   ],
   "tabBar": {

@@ -8,6 +8,15 @@
         <text v-if="merchant.businessHours">🕐 {{ merchant.businessHours }}</text>
         <text v-if="merchant.deliveryFee != null">🛵 配送费 ¥{{ merchant.deliveryFee }}</text>
       </view>
+      <view class="merchant-rating" @click="goReviews">
+        <template v-if="ratingLoaded && rating">
+          <text class="rating-stars">{{ ratingStars }}</text>
+          <text class="rating-score">{{ rating.avgRating.toFixed(1) }}</text>
+          <text class="rating-count">{{ rating.reviewCount }}条评价</text>
+        </template>
+        <text v-else-if="ratingLoaded" class="rating-empty">暂无评价</text>
+        <text class="rating-arrow">›</text>
+      </view>
       <view v-if="merchant.description" class="merchant-desc">{{ merchant.description }}</view>
     </view>
 
@@ -56,12 +65,15 @@ import { ref, computed, onMounted } from 'vue'
 import { getMerchantDetail } from '@/api/merchant'
 import { getDishList } from '@/api/dish'
 import { getCartList, addToCart, updateCartQuantity } from '@/api/cart'
+import { getMerchantRating } from '@/api/review'
 
 const merchantId = ref(null)
 const merchant = ref(null)
 const dishes = ref([])
 const cartMap = ref({})  // dishId -> { cartId, quantity }
 const loading = ref(false)
+const rating = ref(null)
+const ratingLoaded = ref(false)
 
 onMounted(() => {
   const pages = getCurrentPages()
@@ -69,7 +81,7 @@ onMounted(() => {
   merchantId.value = current?.options?.merchantId
   if (merchantId.value) {
     loading.value = true
-    Promise.all([loadMerchant(), loadDishes(), loadCart()]).finally(() => {
+    Promise.all([loadMerchant(), loadDishes(), loadCart(), loadRating()]).finally(() => {
       loading.value = false
     })
   }
@@ -84,6 +96,23 @@ async function loadDishes() {
   const res = await getDishList(merchantId.value)
   dishes.value = res.data || []
 }
+
+async function loadRating() {
+  try {
+    const res = await getMerchantRating(merchantId.value)
+    rating.value = res.data?.reviewCount > 0 ? res.data : null
+  } catch {
+    rating.value = null
+  } finally {
+    ratingLoaded.value = true
+  }
+}
+
+const ratingStars = computed(() => {
+  if (!rating.value?.avgRating) return '☆☆☆☆☆'
+  const full = Math.round(rating.value.avgRating)
+  return '★'.repeat(full) + '☆'.repeat(5 - full)
+})
 
 async function loadCart() {
   const res = await getCartList()
@@ -159,6 +188,10 @@ async function removeDish(dish) {
 function goCart() {
   uni.navigateTo({ url: `/pages/checkout/checkout?merchantId=${merchantId.value}` })
 }
+
+function goReviews() {
+  uni.navigateTo({ url: `/pages/merchant-reviews/merchant-reviews?merchantId=${merchantId.value}` })
+}
 </script>
 
 <style scoped>
@@ -189,6 +222,37 @@ function goCart() {
   font-size: 24rpx;
   color: #666;
   margin-bottom: 10rpx;
+}
+
+.merchant-rating {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-bottom: 8rpx;
+}
+.rating-stars {
+  color: #FFB300;
+  font-size: 28rpx;
+  letter-spacing: 2rpx;
+}
+.rating-score {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #FF6B35;
+}
+.rating-count {
+  font-size: 22rpx;
+  color: #999;
+}
+.rating-empty {
+  font-size: 22rpx;
+  color: #bbb;
+  flex: 1;
+}
+.rating-arrow {
+  font-size: 36rpx;
+  color: #ccc;
+  margin-left: auto;
 }
 
 .merchant-desc {

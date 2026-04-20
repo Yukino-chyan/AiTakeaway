@@ -50,6 +50,9 @@ public class SecurityConfig{
                 .requestMatchers(HttpMethod.PUT,     "/api/order/*/complete").hasRole("MERCHANT")
                 // 订单详情两端都能看（在 service 层做权限细分）
                 .requestMatchers(HttpMethod.GET,     "/api/order/*").authenticated()
+                // 评价 - 查询接口公开（顾客/商家均可查看），提交需登录
+                .requestMatchers(HttpMethod.GET, "/api/review/**").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/review").hasRole("CUSTOMER")
                 // AI 点餐助手（仅顾客可用）
                 .requestMatchers("/api/ai/**").hasRole("CUSTOMER")
                 // 购物车接口（仅顾客可用）
