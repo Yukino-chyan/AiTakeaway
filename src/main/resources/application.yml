@@ -63,7 +63,7 @@ langchain4j:
       model-name: deepseek-chat
       temperature: 0.7
       max-tokens: 1024
-      timeout: 60s                             # LLM 推理较慢，超时设长一点
+      timeout: 60000                           # 单位毫秒，LLM 推理较慢，设 60s
 
 # ========================
 # 服务端口

@@ -2,6 +2,7 @@ package com.aitakeaway.server.service.impl;
 
 import com.aitakeaway.server.dto.CartItemVO;
 import com.aitakeaway.server.dto.CartVO;
+import com.aitakeaway.server.dto.MerchantCartVO;
 import com.aitakeaway.server.entity.Cart;
 import com.aitakeaway.server.entity.Dish;
 import com.aitakeaway.server.entity.Merchant;
@@ -49,17 +50,11 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
             throw new RuntimeException("菜品已下架，无法加入购物车");
         }
 
-        // 跨商家检查：购物车不为空时，新菜品必须属于同一商家
-        List<Cart> existing = list(new LambdaQueryWrapper<Cart>()
-                .eq(Cart::getUserId, userId));
-        if (!existing.isEmpty() && !existing.get(0).getMerchantId().equals(dish.getMerchantId())) {
-            throw new RuntimeException("购物车中已有其他商家的菜品，请先清空购物车再下单");
-        }
-
-        // 检查购物车中是否已存在该菜品
+        // 检查购物车中是否已存在该菜品（last LIMIT 1 防止脏数据导致 TooManyResultsException）
         Cart existingCart = getOne(new LambdaQueryWrapper<Cart>()
                 .eq(Cart::getUserId, userId)
-                .eq(Cart::getDishId, dishId));
+                .eq(Cart::getDishId, dishId)
+                .last("LIMIT 1"));
 
         if (existingCart != null) {
             // 已存在则累加数量
@@ -115,37 +110,57 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
 
         CartVO vo = new CartVO();
         if (carts.isEmpty()) {
-            vo.setItems(List.of());
+            vo.setMerchants(List.of());
             vo.setTotalAmount(BigDecimal.ZERO);
             return vo;
         }
 
-        // 过滤掉已下架或已删除的菜品
-        List<Cart> availableCarts = carts.stream()
+        // 过滤已下架或已删除菜品，按商家分组
+        Map<Long, List<Cart>> byMerchant = carts.stream()
                 .filter(cart -> {
                     Dish dish = dishService.getById(cart.getDishId());
                     return dish != null && dish.getDeleted() != 1 && dish.getStatus() == Dish.STATUS_ON;
                 })
-                .collect(Collectors.toList());
+                .collect(Collectors.groupingBy(Cart::getMerchantId));
 
-        vo.setMerchantId(carts.get(0).getMerchantId());
-        List<CartItemVO> items = availableCarts.stream().map(cart -> {
-            CartItemVO item = new CartItemVO();
-            item.setCartId(cart.getId());
-            item.setDishId(cart.getDishId());
-            item.setMerchantId(cart.getMerchantId());
-            item.setDishName(cart.getDishName());
-            item.setDishImage(cart.getDishImage());
-            item.setDishPrice(cart.getDishPrice());
-            item.setQuantity(cart.getQuantity());
-            item.setSubtotal(cart.getDishPrice().multiply(BigDecimal.valueOf(cart.getQuantity())));
-            return item;
+        List<MerchantCartVO> merchantCarts = byMerchant.entrySet().stream().map(entry -> {
+            Long merchantId = entry.getKey();
+            List<Cart> merchantItems = entry.getValue();
+
+            Merchant merchant = merchantService.getById(merchantId);
+            String merchantName = merchant != null ? merchant.getName() : "未知商家";
+
+            List<CartItemVO> items = merchantItems.stream().map(cart -> {
+                CartItemVO item = new CartItemVO();
+                item.setCartId(cart.getId());
+                item.setDishId(cart.getDishId());
+                item.setMerchantId(cart.getMerchantId());
+                item.setDishName(cart.getDishName());
+                item.setDishImage(cart.getDishImage());
+                item.setDishPrice(cart.getDishPrice());
+                item.setQuantity(cart.getQuantity());
+                item.setSubtotal(cart.getDishPrice().multiply(BigDecimal.valueOf(cart.getQuantity())));
+                return item;
+            }).collect(Collectors.toList());
+
+            BigDecimal merchantTotal = items.stream()
+                    .map(CartItemVO::getSubtotal)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            MerchantCartVO mcv = new MerchantCartVO();
+            mcv.setMerchantId(merchantId);
+            mcv.setMerchantName(merchantName);
+            mcv.setItems(items);
+            mcv.setMerchantTotal(merchantTotal);
+            return mcv;
         }).collect(Collectors.toList());
 
-        vo.setItems(items);
-        vo.setTotalAmount(items.stream()
-                .map(CartItemVO::getSubtotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        BigDecimal totalAmount = merchantCarts.stream()
+                .map(MerchantCartVO::getMerchantTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        vo.setMerchants(merchantCarts);
+        vo.setTotalAmount(totalAmount);
         return vo;
     }
 

@@ -74,9 +74,9 @@ async function load() {
       getCartList(),
       getMerchantDetail(merchantId.value)
     ])
-    items.value = (cartRes.data?.items || []).filter(
-      i => String(i.merchantId) === String(merchantId.value)
-    )
+    const merchants = cartRes.data?.merchants || []
+    const group = merchants.find(m => String(m.merchantId) === String(merchantId.value))
+    items.value = group?.items || []
     merchantName.value = merchantRes.data?.name || ''
   } catch (e) {
     uni.showToast({ title: '加载失败，请检查网络', icon: 'none' })

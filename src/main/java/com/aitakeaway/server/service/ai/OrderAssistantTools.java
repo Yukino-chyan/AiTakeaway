@@ -22,17 +22,17 @@ public class OrderAssistantTools {
     private final CartService cartService;
     private final MerchantService merchantService;
 
-    @Tool("查询指定商家的上架菜品列表。可按关键词（菜名或描述）和最高价格筛选，不限制时传 null")
+    @Tool("查询指定商家的上架菜品列表。可按关键词（菜名或描述）和最高价格筛选")
     public String queryDishes(
             @P("商家ID") Long merchantId,
-            @P("搜索关键词，不限制传 null") String keyword,
-            @P("最高价格（元），不限制传 null") BigDecimal maxPrice) {
+            @P("搜索关键词，无限制时传空字符串") String keyword,
+            @P("最高价格（元），无限制时传0") double maxPrice) {
 
         List<Dish> dishes = dishService.getOnDishList(merchantId).stream()
-                .filter(d -> keyword == null
+                .filter(d -> keyword == null || keyword.isBlank()
                         || d.getName().contains(keyword)
                         || (d.getDescription() != null && d.getDescription().contains(keyword)))
-                .filter(d -> maxPrice == null || d.getPrice().compareTo(maxPrice) <= 0)
+                .filter(d -> maxPrice <= 0 || d.getPrice().compareTo(BigDecimal.valueOf(maxPrice)) <= 0)
                 .collect(Collectors.toList());
 
         if (dishes.isEmpty()) {
@@ -50,10 +50,11 @@ public class OrderAssistantTools {
 
     @Tool("跨所有商家搜索上架菜品。用户表达口味或类型偏好但未指定商家时优先调用此工具，结果含商家名称和商家ID")
     public String searchDishesGlobal(
-            @P("搜索关键词，不限制传 null") String keyword,
-            @P("最高价格（元），不限制传 null") BigDecimal maxPrice) {
+            @P("搜索关键词，必须提供") String keyword,
+            @P("最高价格（元），无限制时传0") double maxPrice) {
 
-        List<Dish> dishes = dishService.searchOnDishes(keyword, maxPrice);
+        BigDecimal maxPriceDecimal = maxPrice <= 0 ? null : BigDecimal.valueOf(maxPrice);
+        List<Dish> dishes = dishService.searchOnDishes(keyword, maxPriceDecimal);
         if (dishes.isEmpty()) {
             return "没有找到符合条件的菜品";
         }

@@ -88,10 +88,10 @@ async function loadDishes() {
 async function loadCart() {
   const res = await getCartList()
   const map = {}
-  for (const item of res.data?.items || []) {
-    if (String(item.merchantId) === String(merchantId.value)) {
-      map[item.dishId] = { cartId: item.cartId, quantity: item.quantity }
-    }
+  const merchants = res.data?.merchants || []
+  const group = merchants.find(m => String(m.merchantId) === String(merchantId.value))
+  for (const item of group?.items || []) {
+    map[item.dishId] = { cartId: item.cartId, quantity: item.quantity }
   }
   cartMap.value = map
 }

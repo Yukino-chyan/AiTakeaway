@@ -16,7 +16,7 @@
         </view>
 
         <!-- 菜品行 -->
-        <view v-for="item in group.items" :key="item.id" class="cart-item">
+        <view v-for="item in group.items" :key="item.cartId" class="cart-item">
           <view class="item-info">
             <text class="item-name">{{ item.dishName }}</text>
             <text class="item-price">¥{{ item.dishPrice }}</text>
@@ -40,13 +40,11 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { getCartList, updateCartQuantity, removeCartItem } from '@/api/cart'
-import { getMerchantDetail } from '@/api/merchant'
 
-const allItems = ref([])
-const merchantNames = ref({})
+const groups = ref([])
 const loading = ref(false)
 
 onShow(load)
@@ -55,29 +53,12 @@ async function load() {
   loading.value = true
   try {
     const res = await getCartList()
-    allItems.value = res.data?.items || []
-    // 拉取所有涉及商家的名称
-    const ids = [...new Set(allItems.value.map(i => i.merchantId))]
-    await Promise.all(ids.map(async id => {
-      if (!merchantNames.value[id]) {
-        const r = await getMerchantDetail(id)
-        merchantNames.value[id] = r.data?.name || `商家${id}`
-      }
-    }))
+    // 后端返回 { merchants: [{merchantId, merchantName, items, merchantTotal}], totalAmount }
+    groups.value = res.data?.merchants || []
   } finally {
     loading.value = false
   }
 }
-
-const groups = computed(() => {
-  const map = {}
-  for (const item of allItems.value) {
-    const mid = item.merchantId
-    if (!map[mid]) map[mid] = { merchantId: mid, merchantName: merchantNames.value[mid] || `商家${mid}`, items: [] }
-    map[mid].items.push(item)
-  }
-  return Object.values(map)
-})
 
 function groupTotal(group) {
   return group.items.reduce((s, i) => s + Number(i.dishPrice) * i.quantity, 0).toFixed(2)
@@ -86,7 +67,7 @@ function groupTotal(group) {
 async function increase(item) {
   item.quantity++
   try {
-    await updateCartQuantity({ cartId: item.id, quantity: item.quantity })
+    await updateCartQuantity({ cartId: item.cartId, quantity: item.quantity })
   } catch {
     await load()
   }
@@ -96,16 +77,19 @@ async function decrease(item) {
   if (item.quantity <= 1) { remove(item); return }
   item.quantity--
   try {
-    await updateCartQuantity({ cartId: item.id, quantity: item.quantity })
+    await updateCartQuantity({ cartId: item.cartId, quantity: item.quantity })
   } catch {
     await load()
   }
 }
 
 async function remove(item) {
-  allItems.value = allItems.value.filter(i => i.id !== item.id)
+  for (const group of groups.value) {
+    group.items = group.items.filter(i => i.cartId !== item.cartId)
+  }
+  groups.value = groups.value.filter(g => g.items.length > 0)
   try {
-    await removeCartItem(item.id)
+    await removeCartItem(item.cartId)
   } catch {
     await load()
   }

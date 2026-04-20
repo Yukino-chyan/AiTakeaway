@@ -8,7 +8,9 @@ import java.util.List;
 @Data
 public class CartVO {
 
-    private Long merchantId;
-    private List<CartItemVO> items;
+    /** 按商家分组的购物车列表 */
+    private List<MerchantCartVO> merchants;
+
+    /** 所有商家合计金额 */
     private BigDecimal totalAmount;
 }
